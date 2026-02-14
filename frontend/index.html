@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PhotoDedup — 重复照片识别</title>
+    <meta name="description" content="智能识别相似照片，释放硬盘空间">
+    <link rel="stylesheet" href="/css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <!-- ===== 顶部导航 ===== -->
+    <header class="navbar">
+        <div class="navbar-brand">
+            <span class="brand-icon">📸</span>
+            <h1>PhotoDedup</h1>
+            <span class="brand-sub">重复照片识别</span>
+        </div>
+        <div class="navbar-actions">
+            <span id="status-badge" class="status-badge idle">就绪</span>
+        </div>
+    </header>
+
+    <!-- ===== 主内容 ===== -->
+    <main class="main-content">
+
+        <!-- ─── 扫描配置页 ─── -->
+        <section id="page-scan" class="page active">
+            <div class="scan-hero">
+                <div class="hero-icon">🔍</div>
+                <h2>选择照片文件夹开始扫描</h2>
+                <p class="hero-desc">自动识别连拍相似照片，结合 Lightroom 编辑记录，智能推荐清理方案</p>
+            </div>
+
+            <!-- 隐藏的文件夹选择器（HTML5 跨平台） -->
+            <input type="file" id="folder-picker" webkitdirectory directory multiple style="display:none" />
+
+            <div class="scan-form">
+                <div class="form-group">
+                    <label>照片文件夹路径</label>
+                    <div class="input-row">
+                        <input type="text" id="scan-dir" placeholder="例如: /Volumes/Photos/2024" />
+                        <button id="btn-browse-folder" class="btn btn-secondary">浏览...</button>
+                    </div>
+                    <p class="form-hint">Lightroom 编辑信息将通过 XMP sidecar 文件自动检测</p>
+                </div>
+
+                <div class="form-group">
+                    <label>相似度阈值</label>
+                    <div class="slider-row">
+                        <input type="range" id="threshold" min="1" max="20" value="10" />
+                        <span id="threshold-val" class="slider-value">10</span>
+                    </div>
+                    <p class="form-hint">越小越严格（只匹配几乎相同的照片），越大越宽松（匹配内容相近的照片）</p>
+                </div>
+
+                <div class="form-group checkbox-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="include-images" />
+                        <span>同时扫描 JPG / PNG 等普通图片</span>
+                    </label>
+                </div>
+
+                <button id="btn-start-scan" class="btn btn-primary btn-large">
+                    <span class="btn-icon">🚀</span>
+                    开始扫描
+                </button>
+            </div>
+        </section>
+
+        <!-- ─── 扫描进度页 ─── -->
+        <section id="page-progress" class="page">
+            <div class="progress-container">
+                <div class="progress-icon" id="progress-spinner">
+                    <div class="spinner"></div>
+                </div>
+                <h2 id="progress-title">正在扫描...</h2>
+                <p id="progress-message" class="progress-message">准备中</p>
+
+                <div class="progress-bar-wrapper">
+                    <div class="progress-bar">
+                        <div id="progress-fill" class="progress-fill" style="width: 0%"></div>
+                    </div>
+                    <span id="progress-percent" class="progress-percent">0%</span>
+                </div>
+
+                <div class="progress-stages">
+                    <div id="stage-scanning" class="stage active">
+                        <span class="stage-dot"></span>
+                        <span>扫描文件</span>
+                    </div>
+                    <div id="stage-extracting" class="stage">
+                        <span class="stage-dot"></span>
+                        <span>提取缩略图</span>
+                    </div>
+                    <div id="stage-hashing" class="stage">
+                        <span class="stage-dot"></span>
+                        <span>计算指纹</span>
+                    </div>
+                    <div id="stage-grouping" class="stage">
+                        <span class="stage-dot"></span>
+                        <span>识别分组</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ─── 结果页 ─── -->
+        <section id="page-results" class="page">
+            <!-- 结果摘要 -->
+            <div class="results-header">
+                <div class="results-summary">
+                    <div class="summary-card">
+                        <span class="summary-number" id="stat-total">0</span>
+                        <span class="summary-label">总照片</span>
+                    </div>
+                    <div class="summary-card">
+                        <span class="summary-number" id="stat-groups">0</span>
+                        <span class="summary-label">相似组</span>
+                    </div>
+                    <div class="summary-card highlight">
+                        <span class="summary-number" id="stat-deletable">0</span>
+                        <span class="summary-label">可删除</span>
+                    </div>
+                    <div class="summary-card save">
+                        <span class="summary-number" id="stat-save-space">0 GB</span>
+                        <span class="summary-label">可释放</span>
+                    </div>
+                </div>
+
+                <div class="results-actions">
+                    <button id="btn-review-mode" class="btn btn-primary">
+                        <span class="btn-icon">👁️</span> 逐组审核
+                    </button>
+                    <button id="btn-auto-mode" class="btn btn-accent">
+                        <span class="btn-icon">⚡</span> 一键清理
+                    </button>
+                    <button id="btn-new-scan" class="btn btn-secondary">
+                        <span class="btn-icon">🔄</span> 重新扫描
+                    </button>
+                </div>
+            </div>
+
+            <!-- 群组列表（审核模式） -->
+            <div id="review-panel" class="review-panel hidden">
+                <div class="review-nav">
+                    <button id="btn-prev-group" class="btn btn-small">◀ 上一组</button>
+                    <span id="group-indicator" class="group-indicator">第 1 / 10 组</span>
+                    <button id="btn-next-group" class="btn btn-small">下一组 ▶</button>
+                </div>
+
+                <div id="group-gallery" class="group-gallery">
+                    <!-- 照片卡片动态生成 -->
+                </div>
+
+                <div class="review-actions">
+                    <button id="btn-keep-edited" class="btn btn-secondary">仅保留LR已编辑</button>
+                    <button id="btn-keep-first" class="btn btn-secondary">仅保留第一张</button>
+                    <button id="btn-keep-all" class="btn btn-secondary">全部保留</button>
+                </div>
+            </div>
+
+            <!-- 自动清理确认面板 -->
+            <div id="auto-panel" class="auto-panel hidden">
+                <div class="auto-summary">
+                    <h3>🤖 智能推荐清理方案</h3>
+                    <p class="auto-desc">
+                        基于 Lightroom 编辑记录和照片相似度分析，以下照片建议删除。
+                        所有删除操作将<strong>移入回收站</strong>，不会永久删除。
+                    </p>
+                    <div class="auto-stats">
+                        <div class="auto-stat keep">
+                            <span class="auto-stat-num" id="auto-keep-count">0</span>
+                            <span>张保留</span>
+                        </div>
+                        <div class="auto-stat delete">
+                            <span class="auto-stat-num" id="auto-delete-count">0</span>
+                            <span>张删除</span>
+                        </div>
+                        <div class="auto-stat space">
+                            <span class="auto-stat-num" id="auto-save-space">0 GB</span>
+                            <span>释放空间</span>
+                        </div>
+                    </div>
+                </div>
+                <div id="auto-groups-list" class="auto-groups-list">
+                    <!-- 动态生成 -->
+                </div>
+                <div class="auto-actions">
+                    <button id="btn-cancel-auto" class="btn btn-secondary">取消</button>
+                    <button id="btn-confirm-delete" class="btn btn-danger btn-large">
+                        <span class="btn-icon">🗑️</span>
+                        确认删除 <span id="confirm-delete-count">0</span> 张照片
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- ─── 删除结果页 ─── -->
+        <section id="page-complete" class="page">
+            <div class="complete-container">
+                <div class="complete-icon">✅</div>
+                <h2>清理完成！</h2>
+                <p id="complete-message" class="complete-message">已成功清理 X 张照片，释放 Y GB 空间</p>
+                <p class="complete-hint">所有文件已移入回收站，如需恢复请从回收站中找回。</p>
+                <button id="btn-back-home" class="btn btn-primary btn-large">返回首页</button>
+            </div>
+        </section>
+    </main>
+
+    <!-- ===== 照片预览弹窗 ===== -->
+    <div id="lightbox" class="lightbox hidden">
+        <div class="lightbox-overlay"></div>
+        <div class="lightbox-content">
+            <button class="lightbox-close">&times;</button>
+            <img id="lightbox-img" src="" alt="预览" />
+            <div class="lightbox-info">
+                <span id="lightbox-filename"></span>
+                <span id="lightbox-size"></span>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/app.js"></script>
+</body>
+
+</html>
