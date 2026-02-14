@@ -29,7 +29,7 @@
 ### 安装
 
 ```bash
-git clone https://github.com/yourname/PhotoDedup.git
+git clone https://github.com/badDevBuild/PhotoDedup.git
 cd PhotoDedup
 python -m venv venv
 source venv/bin/activate  # Windows: venv\Scripts\activate
