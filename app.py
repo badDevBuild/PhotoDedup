@@ -21,6 +21,22 @@ def start_backend():
     start_server(port=PORT, host="127.0.0.1")
 
 
+def wait_for_server(timeout=30):
+    """轮询等待服务器就绪，最多等 timeout 秒"""
+    import urllib.request
+    import urllib.error
+
+    url = f"http://127.0.0.1:{PORT}/"
+    start = time.time()
+    while time.time() - start < timeout:
+        try:
+            urllib.request.urlopen(url, timeout=1)
+            return True
+        except (urllib.error.URLError, ConnectionRefusedError, OSError):
+            time.sleep(0.3)
+    return False
+
+
 def run_desktop_mode():
     """桌面窗口模式：使用 pywebview 创建原生窗口"""
     try:
@@ -35,8 +51,13 @@ def run_desktop_mode():
     server_thread = threading.Thread(target=start_backend, daemon=True)
     server_thread.start()
 
-    # 等待服务器就绪
-    time.sleep(1.5)
+    # 等待服务器真正就绪（而不是固定 sleep）
+    print("⏳ 正在启动服务器...")
+    if not wait_for_server():
+        print("❌ 服务器启动超时，请检查日志")
+        return
+
+    print("✅ 服务器就绪，打开窗口")
 
     # 创建原生窗口
     window = webview.create_window(
@@ -57,11 +78,11 @@ def run_dev_mode():
     print(f"   正在启动服务器...")
     print(f"   访问地址: http://127.0.0.1:{PORT}\n")
 
-    threading.Thread(
-        target=lambda: (time.sleep(1.5), webbrowser.open(f"http://127.0.0.1:{PORT}")),
-        daemon=True,
-    ).start()
+    def open_browser():
+        if wait_for_server():
+            webbrowser.open(f"http://127.0.0.1:{PORT}")
 
+    threading.Thread(target=open_browser, daemon=True).start()
     start_backend()
 
 

@@ -43,6 +43,7 @@ function initEventListeners() {
     $('#btn-review-mode').addEventListener('click', () => enterReviewMode());
     $('#btn-auto-mode').addEventListener('click', () => enterAutoMode());
     $('#btn-new-scan').addEventListener('click', resetAndGoHome);
+    $('#btn-go-home').addEventListener('click', resetAndGoHome);
 
     // 审核导航
     $('#btn-prev-group').addEventListener('click', () => navigateGroup(-1));

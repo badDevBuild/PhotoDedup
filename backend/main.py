@@ -3,6 +3,7 @@
 """
 
 import os
+import sys
 import uvicorn
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
@@ -10,8 +11,19 @@ from fastapi.responses import FileResponse
 
 from backend.api.routes import router
 
-# 项目根目录
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+def _get_base_dir():
+    """获取项目根目录，兼容开发模式和 PyInstaller 打包模式"""
+    if getattr(sys, 'frozen', False):
+        # PyInstaller 打包后，数据文件在 sys._MEIPASS 或可执行文件同级
+        # --add-data "frontend:frontend" 会放到 _MEIPASS/frontend
+        return sys._MEIPASS
+    else:
+        # 开发模式：backend/main.py → backend → 项目根目录
+        return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+BASE_DIR = _get_base_dir()
 FRONTEND_DIR = os.path.join(BASE_DIR, "frontend")
 
 app = FastAPI(
@@ -23,10 +35,11 @@ app = FastAPI(
 # 挂载 API 路由
 app.include_router(router)
 
-# 挂载前端静态文件
-app.mount("/css", StaticFiles(directory=os.path.join(FRONTEND_DIR, "css")), name="css")
-app.mount("/js", StaticFiles(directory=os.path.join(FRONTEND_DIR, "js")), name="js")
-app.mount("/assets", StaticFiles(directory=os.path.join(FRONTEND_DIR, "assets")), name="assets")
+# 挂载前端静态文件（仅挂载存在的目录）
+for subdir in ["css", "js", "assets"]:
+    dirpath = os.path.join(FRONTEND_DIR, subdir)
+    if os.path.isdir(dirpath):
+        app.mount(f"/{subdir}", StaticFiles(directory=dirpath), name=subdir)
 
 
 @app.get("/")
