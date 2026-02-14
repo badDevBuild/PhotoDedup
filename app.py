@@ -42,7 +42,7 @@ def run_desktop_mode():
     try:
         import webview
     except ImportError:
-        print("⚠️  pywebview 未安装，自动切换到浏览器模式")
+        print("[WARN] pywebview 未安装，自动切换到浏览器模式")
         print("   安装: pip install pywebview")
         run_dev_mode()
         return
@@ -52,12 +52,12 @@ def run_desktop_mode():
     server_thread.start()
 
     # 等待服务器真正就绪（而不是固定 sleep）
-    print("⏳ 正在启动服务器...")
+    print("[INFO] 正在启动服务器...")
     if not wait_for_server():
-        print("❌ 服务器启动超时，请检查日志")
+        print("[ERROR] 服务器启动超时，请检查日志")
         return
 
-    print("✅ 服务器就绪，打开窗口")
+    print("[OK] 服务器就绪，打开窗口")
 
     # 创建原生窗口
     window = webview.create_window(
@@ -74,7 +74,7 @@ def run_dev_mode():
     """开发模式：在浏览器中打开"""
     import webbrowser
 
-    print(f"\n🔍 PhotoDedup — 重复照片识别")
+    print(f"\nPhotoDedup — 重复照片识别")
     print(f"   正在启动服务器...")
     print(f"   访问地址: http://127.0.0.1:{PORT}\n")
 
