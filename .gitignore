@@ -38,3 +38,6 @@ thumbnails/
 # Temp files
 *.tmp
 *.bak
+
+# Article (local only)
+article.md
